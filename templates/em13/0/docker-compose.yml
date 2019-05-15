@@ -277,7 +277,7 @@ services:
     image: ${UWSGI_IMAGE}
     environment:
       MYSQL_ROOT_HOST: db
-      MYSQL_DATABASE: gis
+      MYSQL_DATABASE: em13
       MYSQL_PASSWORD: docker
       MYSQL_ROOT_PASSWORD: docker_C0nt41n3r!
       MYSQL_USER: docker
@@ -380,7 +380,7 @@ services:
     # Inherit from the db container
     <<: *db
     # I need to fix this to mysql equivalent, in all glory.
-    command: bash -c "su - mysql -c 'dropdb em13'; createdb -O ${MYSQL_USER} -T template_mysql gis; db_restore /backups/latest.dmp | mysql em13"
+    command: bash -c "su - mysql -c 'dropdb em13'; createdb -O ${MYSQL_USER} -T template_mysql em13; db_restore /backups/latest.dmp | mysql em13"
     labels:
       io.rancher.container.pull_image: always
       io.rancher.container.start_once: true
