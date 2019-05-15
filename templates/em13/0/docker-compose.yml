@@ -1,0 +1,431 @@
+# Base docker-compose file for rancher in staging environment
+# This file has some specific tweaks for staging environment
+# You can copy this file and paste it when creating a new stack in rancher
+# It will try to sync related files
+
+# Rancher currently only supports up to version 2
+# If you want to use docker-swarm, create another orchestration with version 3
+version: "2"
+volumes:
+  db_data:
+  db-backups:
+    #driver: local
+    #driver_opts:
+    #  type: cifs
+    #  o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
+    #  device: "${SMB_PATH}/em13/db-backups/"
+  django-media:
+    #  driver_opts:
+    #    type: cifs
+    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
+    #    device: "${SMB_PATH}/em13/media/"
+  django-media-backups:
+    #  driver: local
+    #  driver_opts:
+    #    type: cifs
+    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
+    #    device: "${SMB_PATH}/em13/media-backups/"
+  django-static:
+    #  driver: local
+    #  driver_opts:
+    #    type: cifs
+    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
+    #    device: "${SMB_PATH}/em13/static/"
+  django-reports:
+  django-logs:
+  nginx-logs:
+  nginx-conf-data:
+
+services:
+  smtp:
+    image: catatnight/postfix
+    environment:
+      maildomain: em13.com
+      smtp_user: noreply:docker
+    restart: unless-stopped
+
+  cache:
+    image: memcached
+    entrypoint:
+      - memcached
+      - -m 64
+    labels:
+      io.rancher.container.pull_image: always
+
+  nginx-conf-data:
+    image: mukomalison/em13_nginx_conf:latest
+    restart: unless-stopped
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.container.start_once: true
+    environment:
+      ALWAYS_INIT: "True"
+      TARGET: "/etc/nginx/sites-available"
+    volumes:
+      - nginx-conf-data:/config_source
+
+  lb:
+    image: rancher/lb-service-haproxy:v0.7.15
+    ports:
+      - ${WEBSERVER_PORT}:80/tcp
+    labels:
+      io.rancher.container.agent.role: environmentAdmin,agent
+      io.rancher.container.agent_service.drain_provider: "true"
+      io.rancher.container.create_agent: "true"
+
+  web:
+    image: nginx
+    volumes:
+      - django-static:/home/web/static:ro
+      - django-media:/home/web/media:ro
+      - nginx-conf-data:/etc/nginx/sites-available
+      - nginx-logs:/var/log/nginx
+    entrypoint: /etc/nginx/sites-available/docker-entrypoint.sh
+    environment:
+      GEOSERVER_FORWARD: "True"
+    links:
+      - uwsgi:django
+      - geoserver:geoserver
+    command: prod
+    labels:
+      io.rancher.container.pull_image: always
+    restart: unless-stopped
+
+  data-dir-conf:
+    image: geosolutionsit/geoserver_data:2.13.x
+    restart: unless-stopped
+    labels:
+      io.rancher.container.start_once: true
+    volumes:
+      - geoserver-data-dir:/geoserver_data/data
+
+  elasticsearch:
+    image: elasticsearch:2.4.2
+    environment:
+      cluster.name: docker-cluster
+      bootstrap.memory_lock: "true"
+    labels:
+      io.rancher.container.pull_image: always
+
+  uwsgi: &uwsgi
+    image: ${UWSGI_IMAGE}
+    environment:
+      MYSQL_ROOT_HOST: db
+      MYSQL_DATABASE: em13
+      MYSQL_PASSWORD: docker
+      MYSQL_USER: docker
+      DJANGO_SETTINGS_MODULE: em13_core.settings.prod_docker
+      RABBITMQ_HOST: rabbitmq
+      VIRTUAL_HOST: ${SITE_URL}
+      VIRTUAL_PORT: "8000"
+      SITE_DOMAIN_NAME: http://${SITE_URL}
+      SITEURL: http://${SITE_URL}/
+      PYTHONPATH: /usr/src/em13:/usr/src/app:/usr/src/em13:/home/web/django_project
+      HAYSTACK_HOST: elasticsearch
+      ROOT_URLCONF: em13_core.urls
+      STATIC_ROOT: /home/web/static
+      MEDIA_ROOT: /home/web/media
+      ADMIN_EMAILS: ${ADMIN_EMAIL}
+      DEFAULT_BACKEND_DATASTORE: datastore
+      IS_CELERY: "False"
+      ALLOWED_HOSTS: '["localhost","127.0.0.1","${SITE_URL}"]'
+      UWSGI_CMD: uwsgi --ini /usr/src/em13/uwsgi.conf
+      C_FORCE_ROOT: 1
+      SENTRY_KEY: ${SENTRY_KEY}
+      GOOGLE_ANALYTIC_KEY: ${GOOGLE_ANALYTIC_KEY}
+    entrypoint: /bin/sh
+    command: -c "uwsgi --ini /usr/src/em13/uwsgi.conf"
+    volumes:
+      - django-static:/home/web/static:rw
+      - django-media:/home/web/media:rw
+      - django-reports:/home/web/reports
+      - django-logs:/var/log/
+    links:
+      - worker:worker
+      - db:db
+    labels:
+      io.rancher.container.pull_image: always
+    restart: unless-stopped
+
+  messaging-worker:
+    image: ${UWSGI_IMAGE}
+    environment:
+      MYSQL_ROOT_HOST: db
+      MYSQL_DATABASE: em13
+      MYSQL_PASSWORD: docker
+      MYSQL_USER: docker
+      DJANGO_SETTINGS_MODULE: em13_core.settings.prod_worker
+      RABBITMQ_HOST: rabbitmq
+      VIRTUAL_HOST: ${SITE_URL}
+      VIRTUAL_PORT: "8000"
+      SITE_DOMAIN_NAME: http://${SITE_URL}
+      SITEURL: http://${SITE_URL}/
+      PYTHONPATH: /usr/src/ledet:/usr/src/app:/usr/src/em13:/home/web/django_project
+      HAYSTACK_HOST: elasticsearch
+      ROOT_URLCONF: em13_core.urls
+      STATIC_ROOT: /home/web/static
+      MEDIA_ROOT: /home/web/media
+      ADMIN_EMAILS: ${ADMIN_EMAIL}
+      DEFAULT_BACKEND_DATASTORE: datastore
+      IS_CELERY: "False"
+      ALLOWED_HOSTS: '["localhost","127.0.0.1","${SITE_URL}"]'
+      UWSGI_CMD: uwsgi --ini /usr/src/em13/uwsgi.conf
+      C_FORCE_ROOT: 1
+    entrypoint: /bin/sh
+    command: -c "/usr/local/bin/python manage.py runmessaging -i"
+    volumes:
+      - django-static:/home/web/static:rw
+      - django-media:/home/web/media:rw
+      - django-reports:/home/web/reports
+      - django-logs:/var/log/
+    links:
+      - cache:cache
+      - rabbitmq:rabbitmq
+      - db:db
+    labels:
+      io.rancher.container.pull_image: always
+    restart: unless-stopped
+
+  worker:
+    image: ${UWSGI_IMAGE}
+    environment:
+      MYSQL_ROOT_HOST: db
+      MYSQL_DATABASE: em13
+      MYSQL_PASSWORD: docker
+      MYSQL_USER: docker
+      DJANGO_SETTINGS_MODULE: em13_core.settings.prod_worker
+      RABBITMQ_HOST: rabbitmq
+      VIRTUAL_HOST: ${SITE_URL}
+      VIRTUAL_PORT: "8000"
+      SITE_DOMAIN_NAME: http://${SITE_URL}
+      SITEURL: http://${SITE_URL}/
+      PYTHONPATH: /usr/src/em13:/usr/src/app:/usr/src/em13:/home/web/django_project
+      HAYSTACK_HOST: elasticsearch
+      ROOT_URLCONF: ledet_core.urls
+      STATIC_ROOT: /home/web/static
+      MEDIA_ROOT: /home/web/media
+      ADMIN_EMAILS: ${ADMIN_EMAIL}
+      DEFAULT_BACKEND_DATASTORE: datastore
+      IS_CELERY: "False"
+      ALLOWED_HOSTS: '["localhost","127.0.0.1","${SITE_URL}"]'
+      UWSGI_CMD: uwsgi --ini /usr/src/ledet/uwsgi.conf
+      C_FORCE_ROOT: 1
+      SENTRY_KEY: ${SENTRY_KEY}
+    entrypoint: /bin/sh
+    command: -c "celery worker --app=em13.celery:app -B  -l DEBUG -Q default,cleanup,email,update"
+    volumes:
+      - django-static:/home/web/static:rw
+      - django-media:/home/web/media:rw
+      - django-reports:/home/web/reports
+      - django-logs:/var/log/
+    links:
+      - cache:cache
+      - rabbitmq:rabbitmq
+      - db:db
+    labels:
+      io.rancher.container.pull_image: always
+    restart: unless-stopped
+
+  collectstatic:
+    # This container will just run, collect static
+    # and then exit. Restart it again in rancher to
+    # re-collect static resources.
+    # Inherit from the uwsgi container
+    image: ${UWSGI_IMAGE}
+    environment:
+      MYSQL_ROOT_HOST: db
+      MYSQL_DATABASE: em13
+      MYSQL_PASSWORD: docker
+      MYSQL_USER: docker
+      DJANGO_SETTINGS_MODULE: em13_core.settings.prod_docker
+      RABBITMQ_HOST: rabbitmq
+      VIRTUAL_HOST: ${SITE_URL}
+      VIRTUAL_PORT: "8000"
+      SITE_DOMAIN_NAME: http://${SITE_URL}
+      SITEURL: http://${SITE_URL}/
+      PYTHONPATH: /usr/src/em13:/usr/src/app:/usr/src/em13:/home/web/django_project
+      HAYSTACK_HOST: elasticsearch
+      ROOT_URLCONF: em13_core.urls
+      STATIC_ROOT: /home/web/static
+      MEDIA_ROOT: /home/web/media
+      ADMIN_EMAILS: ${ADMIN_EMAIL}
+      DEFAULT_BACKEND_DATASTORE: datastore
+      IS_CELERY: "False"
+      ALLOWED_HOSTS: '["localhost","127.0.0.1","${SITE_URL}"]'
+      UWSGI_CMD: uwsgi --ini /usr/src/em13/uwsgi.conf
+      C_FORCE_ROOT: 1
+      SENTRY_KEY: ${SENTRY_KEY}
+    entrypoint: /bin/sh
+    command: -c "python manage.py gruntserver"
+    volumes:
+      - django-static:/home/web/static:rw
+      - django-media:/home/web/media:rw
+      - django-reports:/home/web/reports
+      - django-logs:/var/log/
+    links:
+      - rabbitmq:rabbitmq
+      - db:db
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.container.start_once: true
+    restart: unless-stopped
+
+  migrate:
+    # This container will just run, migrations
+    # and then exit. Restart it again in rancher to
+    # rerun migrations.
+    # Inherit from the uwsgi container
+    # We need to migrate accounts (auth) first as it has a reference to user model
+    image: ${UWSGI_IMAGE}
+    environment:
+      MYSQL_ROOT_HOST: db
+      MYSQL_DATABASE: gis
+      MYSQL_PASSWORD: docker
+      MYSQL_ROOT_PASSWORD: docker_C0nt41n3r!
+      MYSQL_USER: docker
+      DJANGO_SETTINGS_MODULE: em13_core.settings.prod_docker
+      RABBITMQ_HOST: rabbitmq
+      VIRTUAL_HOST: ${SITE_URL}
+      VIRTUAL_PORT: "8000"
+      SITE_DOMAIN_NAME: http://${SITE_URL}
+      SITEURL: http://${SITE_URL}/
+      PYTHONPATH: /usr/src/ledet:/usr/src/app:/usr/src/em13:/home/web/django_project
+      HAYSTACK_HOST: elasticsearch
+      ROOT_URLCONF: em13_core.urls
+      STATIC_ROOT: /home/web/static
+      MEDIA_ROOT: /home/web/media
+      ADMIN_EMAILS: ${ADMIN_EMAIL}
+      DEFAULT_BACKEND_DATASTORE: datastore
+      IS_CELERY: "False"
+      ALLOWED_HOSTS: '["localhost","127.0.0.1","${SITE_URL}"]'
+      UWSGI_CMD: uwsgi --ini /usr/src/em13/uwsgi.conf
+      C_FORCE_ROOT: 1
+      SENTRY_KEY: ${SENTRY_KEY}
+    entrypoint: /bin/sh
+    command: -c "python manage.py makemigrations --noinput;python manage.py migrate auth;python manage.py migrate"
+    volumes:
+      - django-static:/home/web/static:rw
+      - django-media:/home/web/media:rw
+      - django-reports:/home/web/reports
+      - django-logs:/var/log/
+    links:
+      - rabbitmq:rabbitmq
+      - db:db
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.container.start_once: true
+    restart: unless-stopped
+
+  rabbitmq:
+    image: library/rabbitmq
+    environment:
+      RABBITMQ_NODENAME: rabbit
+      RABBIT_PASSWORD: rabbit_test_password
+      USER: rabbit_user
+    restart: unless-stopped
+
+
+  db: &db
+    image: mysql:5.7
+
+    environment:
+      - MYSQL_ROOT_PASSWORD=docker_C0nt41n3r!
+      - MYSQL_DATABASE=em13
+      - MYSQL_USER=docker
+      - MYSQL_PASSWORD=docker
+      - MYSQL_ROOT_HOST=db
+    volumes:
+      - ./db_data:/var/lib/mysql
+      - ./backups:/backups
+    restart: unless-stopped
+    networks:
+      backend:
+        aliases:
+           - db
+      #  Uncomment the next line to have an access with PhpMyAdmin or other db admin
+      # tool using localhost and port 23306 on your computer.
+      #  Only for development !
+    ports:
+      - "23306:3306"
+
+  dbbackups:
+    # Note you cannot scale if you use container_name
+    container_name: em13-db-backups
+    hostname: mysql-backups
+    image: yloeffler/mysql-backup
+    hostname: mysql-backups
+    entrypoint: /bin/bash
+    volumes:
+      - ./backups:/backups
+    environment:
+      # take care to let the project name below match that
+      # declared in the top of the makefile
+      - DUMPPREFIX=MYSQL_em13
+      # These are all defaults anyway, but setting explicitly in
+      # case we ever want to ever use different credentials
+      - MYSQL_ROOT_PASSWORD=docker_C0nt41n3r!
+      - MYSQL_DATABASE=em13
+      - MYSQL_PORT="3306"
+      - MYSQL_USER=docker
+      - MYSQL_PASSWORD=docker
+      - MYSQL_ROOT_HOST=db
+    command:
+      - /start.sh
+    restart: unless-stopped
+    networks:
+      - backend
+
+  dbrestore:
+    # This container will just run, a database restore on the latest database backup
+    # and then exit. Restart it again in rancher to
+    # rerun another database restore
+    # Inherit from the db container
+    <<: *db
+    # I need to fix this to mysql equivalent, in all glory.
+    command: bash -c "su - mysql -c 'dropdb em13'; createdb -O ${MYSQL_USER} -T template_mysql gis; db_restore /backups/latest.dmp | mysql em13"
+    labels:
+      io.rancher.container.pull_image: always
+      io.rancher.container.start_once: true
+    restart: unless-stopped
+
+  mediabackup:
+    image: kartoza/sftp-backup:1.0
+    volumes:
+      # this folder is used to store local backups from django media
+      - django-media-backups:/backups
+      # this folder is used as target folder/source where the backup comes from
+      # this backup comes from django media
+      - django-media:/media_backup
+    environment:
+      - DUMPPREFIX=MEDIA_em13
+      # reduce frequency because the dump is really big
+      - DAILY=3
+      - MONTHLY=2
+      - YEARLY=1
+      - TARGET_FOLDER=/media_backup
+      - USE_SFTP_BACKUP=False
+    restart: unless-stopped
+
+  btsync-data:
+    # BTSync backups for database dumps
+    image: kartoza/btsync:rancher
+    hostname: btsync-data
+    restart: unless-stopped
+    volumes:
+      - db-backups:/web:rw
+    environment:
+      - SECRET=${BTSYNC_DB_SECRET}
+      - DEVICE=EM13Database
+      - STANDBY_MODE=TRUE
+
+  btsync-media:
+    # BTSync backups for django media
+    image: kartoza/btsync:rancher
+    hostname: btsync-media
+    restart: unless-stopped
+    volumes:
+      - django-media:/web:rw
+    environment:
+      - SECRET=${BTSYNC_MEDIA_SECRET}
+      - DEVICE=EM13Media
+      - STANDBY_MODE=TRUE

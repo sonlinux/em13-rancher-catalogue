@@ -1,0 +1,7 @@
+name: EM13 - Email Martketing and Auto-responder platform
+description: A platform for email marketing, managing client lists, auto-responding etc.
+version: 1
+category: EMAIL MARKETING
+maintainer: EM13 LLC. - Alison Mukoma, mukomalison@gmail.com
+license: GPL v3
+projectURL: https://gitlab.com/em13/django-em13.git
