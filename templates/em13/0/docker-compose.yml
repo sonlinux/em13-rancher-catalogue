@@ -83,19 +83,10 @@ services:
     entrypoint: /etc/nginx/sites-available/docker-entrypoint.sh
     links:
       - uwsgi:django
-      - geoserver:geoserver
     command: prod
     labels:
       io.rancher.container.pull_image: always
     restart: unless-stopped
-
-  data-dir-conf:
-    image: geosolutionsit/geoserver_data:2.13.x
-    restart: unless-stopped
-    labels:
-      io.rancher.container.start_once: true
-    volumes:
-      - geoserver-data-dir:/geoserver_data/data
 
   elasticsearch:
     image: elasticsearch:2.4.2

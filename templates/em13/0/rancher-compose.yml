@@ -68,7 +68,7 @@ catalog:
       type: "string"
     - variable: BTSYNC_MEDIA_SECRET
       label: "Media backups key"
-      description: "Resilio sync read/write key for syncing geonode media backups"
+      description: "Resilio sync read/write key for syncing media backups"
       required: false
       default:
       type: "string"
@@ -149,9 +149,6 @@ services:
   migrate:
     scale: 1
     start_on_create: true
-  geonode-db-backups:
-    scale: 1
-    start_on_create: true
-  ipt:
-    scale: 1
-    start_on_create: true
+  # ipt:
+  #   scale: 1
+  #   start_on_create: true
