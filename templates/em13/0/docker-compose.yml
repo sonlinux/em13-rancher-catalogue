@@ -81,8 +81,6 @@ services:
       - nginx-conf-data:/etc/nginx/sites-available
       - nginx-logs:/var/log/nginx
     entrypoint: /etc/nginx/sites-available/docker-entrypoint.sh
-    environment:
-      GEOSERVER_FORWARD: "True"
     links:
       - uwsgi:django
       - geoserver:geoserver
