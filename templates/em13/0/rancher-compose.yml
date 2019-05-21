@@ -10,23 +10,23 @@ version: "2"
       required: true
       default: ""
       type: "string"
-    - variable: MYSQL_DATABASE
-      label: MySQL db to create.
+    - variable: MARIADB_DATABASE
+      label: MARIADB db to create.
       required: true
       default: em13
       type: "string"
-    - variable: MYSQL_USER
-      label: MySQL superuser account to create.
+    - variable: MARIADB_USER
+      label: MARIADB superuser account to create.
       required: true
       default: docker
       type: "string"
-    - variable: MYSQL_ROOT_PASSWORD
-      label: MySQL root password.
+    - variable: MARIADB_ROOT_PASSWORD
+      label: MARIADB root password.
       required: true
       default: docker_C0nt41n3r!
       type: "string"
-    - variable: MYSQL_PASSWORD
-      label: MySQL superuser password to create.
+    - variable: MARIADB_PASSWORD
+      label: MARIADB superuser password to create.
       required: true
       default: docker
       type: "string"
