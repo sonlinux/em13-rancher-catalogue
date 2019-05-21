@@ -1,25 +1,10 @@
 version: "2"
-catalog:
+.catalog:
   name: "EM13"
-  description: "Email Marketing and Auto-responder platform."
-  version: em13
+  description: "Email Marketing and Auto-responder platform. [django-em13](https://gitlab.com/em13/django-em13) all set up and ready to go in Rancher."
+  version: 1
   uuid: em13-0
   questions:
-    #- variable: SMB_PATH
-    #  label: SMB/CIFS network file share path. e.g. //u1234562.your-storagebox.de/backup
-    #  required: true
-    #  default:
-    #  type: "string"
-    #- variable: SMB_USER
-    #  label: SMB/CIFS network file share username.
-    #  required: true
-    #  default: docker
-    #  type: "string"
-    #- variable: SMB_PASSWORD
-    #  label: SMB/CIFS network file share password.
-    #  required: true
-    #  default: docker
-    #  type: "password"
     - variable: UWSGI_IMAGE
       label: Image used for UWSGI container e.g. mukomalison/em13_uwsgi:latest
       required: true
@@ -31,7 +16,7 @@ catalog:
       default: em13
       type: "string"
     - variable: MYSQL_USER
-      label: PostgrsSQL superuser account to create.
+      label: MySQL superuser account to create.
       required: true
       default: docker
       type: "string"
@@ -41,7 +26,7 @@ catalog:
       default: docker_C0nt41n3r!
       type: "string"
     - variable: MYSQL_PASSWORD
-      label: PostgreSQL superuser password to create.
+      label: MySQL superuser password to create.
       required: true
       default: docker
       type: "string"
@@ -83,7 +68,7 @@ catalog:
       type: "string"
     - variable: BTSYNC_MEDIA_SECRET
       label: "Media backups key"
-      description: "Resilio sync read/write key for syncing geonode media backups"
+      description: "Resilio sync read/write key for syncing media backups"
       required: false
       default:
       type: "string"
@@ -164,9 +149,6 @@ services:
   migrate:
     scale: 1
     start_on_create: true
-  geonode-db-backups:
-    scale: 1
-    start_on_create: true
-  ipt:
-    scale: 1
-    start_on_create: true
+  # ipt:
+  #   scale: 1
+  #   start_on_create: true

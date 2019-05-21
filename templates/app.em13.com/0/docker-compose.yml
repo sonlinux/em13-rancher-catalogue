@@ -5,32 +5,17 @@
 
 # Rancher currently only supports up to version 2
 # If you want to use docker-swarm, create another orchestration with version 3
-version: "2"
+version: '2'
 volumes:
+   # Use a project specific prefix because if you name the same volume in
+  # two different docker compose instances running on the
+  # same host, they will use the same data volume!
   db_data:
-  db-backups:
-    #driver: local
-    #driver_opts:
-    #  type: cifs
-    #  o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
-    #  device: "${SMB_PATH}/em13/db-backups/"
-  django-media:
-    #  driver_opts:
-    #    type: cifs
-    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
-    #    device: "${SMB_PATH}/em13/media/"
-  django-media-backups:
-    #  driver: local
-    #  driver_opts:
-    #    type: cifs
-    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
-    #    device: "${SMB_PATH}/em13/media-backups/"
-  django-static:
-    #  driver: local
-    #  driver_opts:
-    #    type: cifs
-    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
-    #    device: "${SMB_PATH}/em13/static/"
+  backups:
+  media:
+  static:
+  logs:
+  reports:
   django-reports:
   django-logs:
   nginx-logs:
@@ -40,9 +25,9 @@ services:
   smtp:
     image: catatnight/postfix
     environment:
-      maildomain: em13.com
+      maildomain: postfix
       smtp_user: noreply:docker
-    restart: unless-stopped
+    restart: on-failure:5
 
   cache:
     image: memcached
@@ -64,14 +49,14 @@ services:
     volumes:
       - nginx-conf-data:/config_source
 
-  lb:
-    image: rancher/lb-service-haproxy:v0.7.15
-    ports:
-      - ${WEBSERVER_PORT}:80/tcp
-    labels:
-      io.rancher.container.agent.role: environmentAdmin,agent
-      io.rancher.container.agent_service.drain_provider: "true"
-      io.rancher.container.create_agent: "true"
+  # lb:
+  #   image: rancher/lb-service-haproxy:v0.7.15
+  #   ports:
+  #     - ${WEBSERVER_PORT}:80/tcp
+  #   labels:
+  #     io.rancher.container.agent.role: environmentAdmin,agent
+  #     io.rancher.container.agent_service.drain_provider: "true"
+  #     io.rancher.container.create_agent: "true"
 
   web:
     image: nginx
@@ -81,23 +66,12 @@ services:
       - nginx-conf-data:/etc/nginx/sites-available
       - nginx-logs:/var/log/nginx
     entrypoint: /etc/nginx/sites-available/docker-entrypoint.sh
-    environment:
-      GEOSERVER_FORWARD: "True"
     links:
       - uwsgi:django
-      - geoserver:geoserver
     command: prod
     labels:
       io.rancher.container.pull_image: always
     restart: unless-stopped
-
-  data-dir-conf:
-    image: geosolutionsit/geoserver_data:2.13.x
-    restart: unless-stopped
-    labels:
-      io.rancher.container.start_once: true
-    volumes:
-      - geoserver-data-dir:/geoserver_data/data
 
   elasticsearch:
     image: elasticsearch:2.4.2
@@ -279,7 +253,7 @@ services:
     image: ${UWSGI_IMAGE}
     environment:
       MYSQL_ROOT_HOST: db
-      MYSQL_DATABASE: gis
+      MYSQL_DATABASE: em13
       MYSQL_PASSWORD: docker
       MYSQL_ROOT_PASSWORD: docker_C0nt41n3r!
       MYSQL_USER: docker
@@ -295,7 +269,7 @@ services:
       STATIC_ROOT: /home/web/static
       MEDIA_ROOT: /home/web/media
       ADMIN_EMAILS: ${ADMIN_EMAIL}
-      DEFAULT_BACKEND_DATASTORE: datastore
+      # DEFAULT_BACKEND_DATASTORE: datastore
       IS_CELERY: "False"
       ALLOWED_HOSTS: '["localhost","127.0.0.1","${SITE_URL}"]'
       UWSGI_CMD: uwsgi --ini /usr/src/em13/uwsgi.conf
@@ -329,14 +303,14 @@ services:
     image: mysql:5.7
 
     environment:
-      - MYSQL_ROOT_PASSWORD=docker_C0nt41n3r!
-      - MYSQL_DATABASE=em13
-      - MYSQL_USER=docker
-      - MYSQL_PASSWORD=docker
-      - MYSQL_ROOT_HOST=db
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     volumes:
-      - ./db_data:/var/lib/mysql
-      - ./backups:/backups
+      - 'db_data:/var/lib/mysql'
+      - 'backups:/backups'
     restart: unless-stopped
     networks:
       backend:
@@ -345,8 +319,8 @@ services:
       #  Uncomment the next line to have an access with PhpMyAdmin or other db admin
       # tool using localhost and port 23306 on your computer.
       #  Only for development !
-    ports:
-      - "23306:3306"
+      # ports:
+      #   - "23306:3306"
 
   dbbackups:
     # Note you cannot scale if you use container_name
@@ -382,7 +356,7 @@ services:
     # Inherit from the db container
     <<: *db
     # I need to fix this to mysql equivalent, in all glory.
-    command: bash -c "su - mysql -c 'dropdb em13'; createdb -O ${MYSQL_USER} -T template_mysql gis; db_restore /backups/latest.dmp | mysql em13"
+    command: bash -c "su - mysql -c 'dropdb em13'; createdb -O ${MYSQL_USER} -T template_mysql em13; db_restore /backups/latest.dmp | mysql em13"
     labels:
       io.rancher.container.pull_image: always
       io.rancher.container.start_once: true
