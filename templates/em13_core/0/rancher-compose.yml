@@ -149,6 +149,6 @@ services:
   migrate:
     scale: 1
     start_on_create: true
-  # ipt:
-  #   scale: 1
-  #   start_on_create: true
+  ipt:
+    scale: 1
+    start_on_create: true
