@@ -84,10 +84,10 @@ services:
   uwsgi: &uwsgi
     image: ${UWSGI_IMAGE}
     environment:
-      MYSQL_ROOT_HOST: db
-      MYSQL_DATABASE: em13
-      MYSQL_PASSWORD: docker
-      MYSQL_USER: docker
+      MARIADB_ROOT_HOST: db
+      MARIADB_DATABASE: em13
+      MARIADB_PASSWORD: docker
+      MARIADB_USER: docker
       DJANGO_SETTINGS_MODULE: em13_core.settings.prod_docker
       RABBITMQ_HOST: rabbitmq
       VIRTUAL_HOST: ${SITE_URL}
@@ -124,10 +124,10 @@ services:
   messaging-worker:
     image: ${UWSGI_IMAGE}
     environment:
-      MYSQL_ROOT_HOST: db
-      MYSQL_DATABASE: em13
-      MYSQL_PASSWORD: docker
-      MYSQL_USER: docker
+      MARIADB_ROOT_HOST: db
+      MARIADB_DATABASE: em13
+      MARIADB_PASSWORD: docker
+      MARIADB_USER: docker
       DJANGO_SETTINGS_MODULE: em13_core.settings.prod_worker
       RABBITMQ_HOST: rabbitmq
       VIRTUAL_HOST: ${SITE_URL}
@@ -163,10 +163,10 @@ services:
   worker:
     image: ${UWSGI_IMAGE}
     environment:
-      MYSQL_ROOT_HOST: db
-      MYSQL_DATABASE: em13
-      MYSQL_PASSWORD: docker
-      MYSQL_USER: docker
+      MARIADB_ROOT_HOST: db
+      MARIADB_DATABASE: em13
+      MARIADB_PASSWORD: docker
+      MARIADB_USER: docker
       DJANGO_SETTINGS_MODULE: em13_core.settings.prod_worker
       RABBITMQ_HOST: rabbitmq
       VIRTUAL_HOST: ${SITE_URL}
@@ -207,10 +207,10 @@ services:
     # Inherit from the uwsgi container
     image: ${UWSGI_IMAGE}
     environment:
-      MYSQL_ROOT_HOST: db
-      MYSQL_DATABASE: em13
-      MYSQL_PASSWORD: docker
-      MYSQL_USER: docker
+      MARIADB_ROOT_HOST: db
+      MARIADB_DATABASE: em13
+      MARIADB_PASSWORD: docker
+      MARIADB_USER: docker
       DJANGO_SETTINGS_MODULE: em13_core.settings.prod_docker
       RABBITMQ_HOST: rabbitmq
       VIRTUAL_HOST: ${SITE_URL}
@@ -252,11 +252,11 @@ services:
     # We need to migrate accounts (auth) first as it has a reference to user model
     image: ${UWSGI_IMAGE}
     environment:
-      MYSQL_ROOT_HOST: db
-      MYSQL_DATABASE: em13
-      MYSQL_PASSWORD: docker
-      MYSQL_ROOT_PASSWORD: docker_C0nt41n3r!
-      MYSQL_USER: docker
+      MARIADB_ROOT_HOST: db
+      MARIADB_DATABASE: em13
+      MARIADB_PASSWORD: docker
+      MARIADB_ROOT_PASSWORD: docker_C0nt41n3r!
+      MARIADB_USER: docker
       DJANGO_SETTINGS_MODULE: em13_core.settings.prod_docker
       RABBITMQ_HOST: rabbitmq
       VIRTUAL_HOST: ${SITE_URL}
@@ -300,16 +300,16 @@ services:
 
 
   db: &db
-    image: mysql:5.7
+    image: bitnami/mariadb:latest
 
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MARIADB_DATABASE=${MARIADB_DATABASE}
+      - MARIADB_USER=${MARIADB_USER}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+      - MARIADB_ROOT_HOST=${MARIADB_ROOT_HOST}
     volumes:
-      - 'db_data:/var/lib/mysql'
+      - 'db_data:/bitnami'
       - 'backups:/backups'
     restart: unless-stopped
     networks:
@@ -325,24 +325,24 @@ services:
   dbbackups:
     # Note you cannot scale if you use container_name
     container_name: em13-db-backups
-    hostname: mysql-backups
-    image: yloeffler/mysql-backup
-    hostname: mysql-backups
+    hostname: mariadb-backups
+    image: yloeffler/mariadb-backup
+    hostname: mariadb-backups
     entrypoint: /bin/bash
     volumes:
       - ./backups:/backups
     environment:
       # take care to let the project name below match that
       # declared in the top of the makefile
-      - DUMPPREFIX=MYSQL_em13
+      - DUMPPREFIX=MARIADB_em13
       # These are all defaults anyway, but setting explicitly in
       # case we ever want to ever use different credentials
-      - MYSQL_ROOT_PASSWORD=docker_C0nt41n3r!
-      - MYSQL_DATABASE=em13
-      - MYSQL_PORT="3306"
-      - MYSQL_USER=docker
-      - MYSQL_PASSWORD=docker
-      - MYSQL_ROOT_HOST=db
+      - MARIADB_ROOT_PASSWORD=docker_C0nt41n3r!
+      - MARIADB_DATABASE=em13
+      - MARIADB_PORT="3306"
+      - MARIADB_USER=docker
+      - MARIADB_PASSWORD=docker
+      - MARIADB_ROOT_HOST=db
     command:
       - /start.sh
     restart: unless-stopped
@@ -355,8 +355,8 @@ services:
     # rerun another database restore
     # Inherit from the db container
     <<: *db
-    # I need to fix this to mysql equivalent, in all glory.
-    command: bash -c "su - mysql -c 'dropdb em13'; createdb -O ${MYSQL_USER} -T template_mysql em13; db_restore /backups/latest.dmp | mysql em13"
+    # I need to fix this to mariadb equivalent, in all glory.
+    command: bash -c "su - mariadb -c 'dropdb em13'; createdb -O ${MARIADB_USER} -T template_mariadb em13; db_restore /backups/latest.dmp | mariadb em13"
     labels:
       io.rancher.container.pull_image: always
       io.rancher.container.start_once: true
