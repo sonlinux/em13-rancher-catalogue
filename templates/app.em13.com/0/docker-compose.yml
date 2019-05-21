@@ -5,14 +5,21 @@
 
 # Rancher currently only supports up to version 2
 # If you want to use docker-swarm, create another orchestration with version 3
-version: "2"
+version: '2'
 volumes:
+   # Use a project specific prefix because if you name the same volume in
+  # two different docker compose instances running on the
+  # same host, they will use the same data volume!
   db_data:
   backups:
   media:
   static:
   logs:
   reports:
+  django-reports:
+  django-logs:
+  nginx-logs:
+  nginx-conf-data:
 
 services:
   smtp:
@@ -42,14 +49,14 @@ services:
     volumes:
       - nginx-conf-data:/config_source
 
-  lb:
-    image: rancher/lb-service-haproxy:v0.7.15
-    ports:
-      - ${WEBSERVER_PORT}:80/tcp
-    labels:
-      io.rancher.container.agent.role: environmentAdmin,agent
-      io.rancher.container.agent_service.drain_provider: "true"
-      io.rancher.container.create_agent: "true"
+  # lb:
+  #   image: rancher/lb-service-haproxy:v0.7.15
+  #   ports:
+  #     - ${WEBSERVER_PORT}:80/tcp
+  #   labels:
+  #     io.rancher.container.agent.role: environmentAdmin,agent
+  #     io.rancher.container.agent_service.drain_provider: "true"
+  #     io.rancher.container.create_agent: "true"
 
   web:
     image: nginx
