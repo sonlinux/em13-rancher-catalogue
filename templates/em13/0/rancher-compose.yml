@@ -1,8 +1,8 @@
 version: "2"
-catalog:
+.catalog:
   name: "EM13"
-  description: "Email Marketing and Auto-responder platform."
-  version: em13
+  description: "Email Marketing and Auto-responder platform. [django-em13](https://gitlab.com/em13/django-em13) all set up and ready to go in Rancher."
+  version: 1
   uuid: em13-0
   questions:
     - variable: UWSGI_IMAGE

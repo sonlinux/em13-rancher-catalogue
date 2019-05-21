@@ -8,41 +8,19 @@
 version: "2"
 volumes:
   db_data:
-  db-backups:
-    #driver: local
-    #driver_opts:
-    #  type: cifs
-    #  o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
-    #  device: "${SMB_PATH}/em13/db-backups/"
-  django-media:
-    #  driver_opts:
-    #    type: cifs
-    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
-    #    device: "${SMB_PATH}/em13/media/"
-  django-media-backups:
-    #  driver: local
-    #  driver_opts:
-    #    type: cifs
-    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
-    #    device: "${SMB_PATH}/em13/media-backups/"
-  django-static:
-    #  driver: local
-    #  driver_opts:
-    #    type: cifs
-    #    o: vers=3.02,mfsymlinks,username=${SMB_USER},password=${SMB_PASSWORD}
-    #    device: "${SMB_PATH}/em13/static/"
-  django-reports:
-  django-logs:
-  nginx-logs:
-  nginx-conf-data:
+  backups:
+  media:
+  static:
+  logs:
+  reports:
 
 services:
   smtp:
     image: catatnight/postfix
     environment:
-      maildomain: em13.com
+      maildomain: postfix
       smtp_user: noreply:docker
-    restart: unless-stopped
+    restart: on-failure:5
 
   cache:
     image: memcached
@@ -284,7 +262,7 @@ services:
       STATIC_ROOT: /home/web/static
       MEDIA_ROOT: /home/web/media
       ADMIN_EMAILS: ${ADMIN_EMAIL}
-      DEFAULT_BACKEND_DATASTORE: datastore
+      # DEFAULT_BACKEND_DATASTORE: datastore
       IS_CELERY: "False"
       ALLOWED_HOSTS: '["localhost","127.0.0.1","${SITE_URL}"]'
       UWSGI_CMD: uwsgi --ini /usr/src/em13/uwsgi.conf
@@ -318,14 +296,14 @@ services:
     image: mysql:5.7
 
     environment:
-      - MYSQL_ROOT_PASSWORD=docker_C0nt41n3r!
-      - MYSQL_DATABASE=em13
-      - MYSQL_USER=docker
-      - MYSQL_PASSWORD=docker
-      - MYSQL_ROOT_HOST=db
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     volumes:
-      - ./db_data:/var/lib/mysql
-      - ./backups:/backups
+      - 'db_data:/var/lib/mysql'
+      - 'backups:/backups'
     restart: unless-stopped
     networks:
       backend:
@@ -334,8 +312,8 @@ services:
       #  Uncomment the next line to have an access with PhpMyAdmin or other db admin
       # tool using localhost and port 23306 on your computer.
       #  Only for development !
-    ports:
-      - "23306:3306"
+      # ports:
+      #   - "23306:3306"
 
   dbbackups:
     # Note you cannot scale if you use container_name
