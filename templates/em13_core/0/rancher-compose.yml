@@ -6,7 +6,7 @@ version: "2"
   uuid: em13-0
   questions:
     - variable: UWSGI_IMAGE
-      label: Image used for UWSGI container e.g. mukomalison/em13_uwsgi:latest
+      label: Image used for UWSGI container e.g. alisonmukoma/em13_uwsgi:latest
       required: true
       default: ""
       type: "string"
