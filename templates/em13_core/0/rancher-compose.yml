@@ -31,22 +31,22 @@ version: "2"
       default: docker
       type: "string"
     - variable: DB_SERVER
-      label: MARIADB database server.
+      label: DB Backup - database server.
       required: true
       default: db
       type: "string"
     - variable: DB_NAME
-      label: MARIADB database name.
+      label: DB Backup - database name.
       required: true
       default: em13
       type: "string"
     - variable: DB_USER
-      label: MARIADB database user.
+      label: DB Backup - database user.
       required: true
       default: docker
       type: "string"
     - variable: DB_PASS
-      label: MARIADB Database password.
+      label: DB Backup - Database password.
       required: true
       default: docker
       type: "string"
