@@ -37,17 +37,17 @@ services:
     labels:
       io.rancher.container.pull_image: always
 
-  nginx-conf-data:
-    image: mukomalison/em13_nginx_conf:latest
-    restart: unless-stopped
-    labels:
-      io.rancher.container.pull_image: always
-      io.rancher.container.start_once: true
-    environment:
-      ALWAYS_INIT: "True"
-      TARGET: "/etc/nginx/sites-available"
-    volumes:
-      - nginx-conf-data:/config_source
+  # nginx-conf-data:
+  #   image: mukomalison/em13_nginx_conf:latest
+  #   restart: unless-stopped
+  #   labels:
+  #     io.rancher.container.pull_image: always
+  #     io.rancher.container.start_once: true
+  #   environment:
+  #     ALWAYS_INIT: "True"
+  #     TARGET: "/etc/nginx/sites-available"
+  #   volumes:
+  #     - nginx-conf-data:/config_source
 
   lb:
     image: rancher/lb-service-haproxy:v0.7.15
