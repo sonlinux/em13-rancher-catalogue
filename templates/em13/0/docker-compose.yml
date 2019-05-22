@@ -313,7 +313,7 @@ services:
       - 'backups:/backups'
     restart: unless-stopped
     networks:
-      backend:
+      em13_backend:
         aliases:
            - db
       #  Uncomment the next line to have an access with PhpMyAdmin or other db admin
@@ -325,29 +325,25 @@ services:
   dbbackups:
     # Note you cannot scale if you use container_name
     container_name: em13-db-backups
+    image: tiredofit/mariadb-backup
+
     hostname: mariadb-backups
-    image: yloeffler/mariadb-backup
-    hostname: mariadb-backups
-    entrypoint: /bin/bash
     volumes:
       - ./backups:/backups
     environment:
       # take care to let the project name below match that
       # declared in the top of the makefile
-      - DUMPPREFIX=MARIADB_em13
+      # - DUMPPREFIX=MARIADB_em13
       # These are all defaults anyway, but setting explicitly in
       # case we ever want to ever use different credentials
-      - MARIADB_ROOT_PASSWORD=docker_C0nt41n3r!
-      - MARIADB_DATABASE=em13
-      - MARIADB_PORT="3306"
-      - MARIADB_USER=docker
-      - MARIADB_PASSWORD=docker
-      - MARIADB_ROOT_HOST=db
-    command:
-      - /start.sh
-    restart: unless-stopped
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - DB_SERVER=${DB_SERVER}
+      - DB_USER=${DB_USER}
+      # - DB_DUMP_TARGET=/backup
+    # restart: unless-stopped
     networks:
-      - backend
+      - em13_backend
 
   dbrestore:
     # This container will just run, a database restore on the latest database backup
