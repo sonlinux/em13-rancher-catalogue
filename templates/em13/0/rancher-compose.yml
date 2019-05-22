@@ -26,7 +26,27 @@ version: "2"
       default: docker_C0nt41n3r!
       type: "string"
     - variable: MARIADB_PASSWORD
-      label: MARIADB superuser password to create.
+      label: MARIADB password to create.
+      required: true
+      default: docker
+      type: "string"
+    - variable: DB_SERVER
+      label: MARIADB database server.
+      required: true
+      default: db
+      type: "string"
+    - variable: DB_NAME
+      label: MARIADB database name.
+      required: true
+      default: em13
+      type: "string"
+    - variable: DB_USER
+      label: MARIADB database user.
+      required: true
+      default: docker
+      type: "string"
+    - variable: DB_PASS
+      label: MARIADB Database password.
       required: true
       default: docker
       type: "string"
