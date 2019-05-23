@@ -8,7 +8,7 @@ version: "2"
     - variable: UWSGI_IMAGE
       label: Image used for UWSGI container e.g. alisonmukoma/em13_uwsgi:latest
       required: true
-      default: ""
+      default: alisonmukoma/em13_uwsgi:latest
       type: "string"
     - variable: MARIADB_DATABASE
       label: MARIADB db to create.
