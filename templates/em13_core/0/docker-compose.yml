@@ -329,7 +329,7 @@ services:
 
     hostname: mariadb-backups
     volumes:
-      - ./backups:/backups
+      - 'backups:/backups'
     environment:
       # take care to let the project name below match that
       # declared in the top of the makefile
